@@ -34,28 +34,38 @@ func randomCpuUsageData(duration string) []CpuLoadSlice {
 	// rand.Intn(max - min) + min
 	max := 100
 	min := 0
-	// go to 3600
-	tsec_end := 3600
-	tsec_interval := 5
+	var tsec_end int
+	var tsec_interval int
 	var rnum int
+
+	// Conditionally configure sample interval and time end
+	if duration == "hr" {
+		// number of seconds in an hour
+		tsec_end = 3600
+		tsec_interval = 5
+	} else {
+		// number of seconds in a week
+		tsec_end = 604800
+		tsec_interval = 240
+	}
 
 	var cpuLoad []CpuLoadSlice
 
-	// generate a bunch of random numbers
+	// Generate a bunch of random numbers
 	for tsec := 0; tsec < tsec_end; tsec += tsec_interval {
 		// generate random number between max/min
 		rnum = randomInt(min, max)
 
 		cpuLoad = append(cpuLoad, CpuLoadSlice{tsec, rnum})
 
-		// reassign max
+		// Reassign max
 		if (rnum + 10) > 100 {
 			max = 100
 		} else {
 			max = rnum + 10
 		}
 
-		// reassign min
+		// Reassign min
 		if (rnum - 10) < 0 {
 			min = 0
 		} else {
