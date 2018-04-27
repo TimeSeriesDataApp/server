@@ -2,96 +2,117 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
-	"github/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
-//******************************************************************************
-// Cpu Usage
-type CpuLoadSlice struct {
-	Toffset int `json:"toffset,omitempty"`
-	Load    int `json:"load,omitempty"`
+// UsageSlice : Time slice struct to hold generated usage data
+type UsageSlice struct {
+	Toffset int `json:"toffset"`
+	Usage   int `json:"usage"`
 }
 
-func GetCpuUsageHandler(w http.ResponseWriter, req *http.Request) {
+// GetUsageHandler : Handler for the /usage endpoint
+func GetUsageHandler(w http.ResponseWriter, req *http.Request) {
 	duration := req.URL.Query().Get("duration")
-
 	if duration != "wk" && duration != "hr" {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Invalid duration: %v\n", duration)
 		return
 	}
 
-	data := randomCpuUsageData(duration)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
-}
+	// usageMap holds all generated data for all devices
+	var usageMap = make(map[string][]UsageSlice)
 
-func randomCpuUsageData(duration string) []CpuLoadSlice {
-	// rand.Intn(max - min) + min
-	max := 100
-	min := 0
-	var tsec_end int
-	var tsec_interval int
-	var rnum int
+	devices := strings.Split(req.URL.Query().Get("device"), ",")
+	for i := range devices {
+		if _, ok := usageMap[devices[i]]; ok {
+			// Duplicate query in query string
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Duplicate device: %v\n", devices[i])
+			return
+		}
 
-	// Conditionally configure sample interval and time end
-	if duration == "hr" {
-		// number of seconds in an hour
-		tsec_end = 3600
-		tsec_interval = 5
-	} else {
-		// number of seconds in a week
-		tsec_end = 604800
-		tsec_interval = 240
+		upward := false
+		if devices[i] == "disk" {
+			// Disk usage will gradually trend upward
+			upward = true
+		}
+
+		switch devices[i] {
+		case "cpu", "disk", "memory", "network":
+			usageMap[devices[i]] = randomUsageData(duration, upward)
+		default:
+			// Unsupported/unknown device
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Unknown device: %v\n", devices[i])
+			return
+		}
 	}
 
-	var cpuLoad []CpuLoadSlice
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(usageMap)
+}
+
+func randomUsageData(duration string, upward bool) []UsageSlice {
+	max := 30
+	min := 0
+	var tsecEnd int
+	var tsecInterval int
+	var minStep int
+	var maxStep int
+	var rnum int
+
+	// Configure sample interval and time end
+	if duration == "hr" {
+		// number of seconds in an hour
+		tsecEnd = 3600
+		tsecInterval = 5
+	} else {
+		// number of seconds in a week
+		tsecEnd = 604800
+		tsecInterval = 240
+	}
+
+	if upward {
+		minStep = 8
+		maxStep = 15
+	} else {
+		minStep = 10
+		maxStep = 10
+	}
+
+	var usageData []UsageSlice
 
 	// Generate a bunch of random numbers
-	for tsec := 0; tsec < tsec_end; tsec += tsec_interval {
+	for tsec := 0; tsec < tsecEnd; tsec += tsecInterval {
 		// generate random number between max/min
 		rnum = randomInt(min, max)
 
-		cpuLoad = append(cpuLoad, CpuLoadSlice{tsec, rnum})
+		usageData = append(usageData, UsageSlice{tsec, rnum})
 
 		// Reassign max
-		if (rnum + 10) > 100 {
+		if (rnum + maxStep) > 100 {
 			max = 100
 		} else {
-			max = rnum + 10
+			max = rnum + maxStep
 		}
 
 		// Reassign min
-		if (rnum - 10) < 0 {
+		if (rnum - minStep) < 0 {
 			min = 0
 		} else {
-			min = rnum - 10
+			min = rnum - minStep
 		}
 	}
 
-	return cpuLoad
-}
-
-//******************************************************************************
-// Disk Usage
-func GetDiskUsageHandler(w http.ResponseWriter, req *http.Request) {
-
-}
-
-//******************************************************************************
-// Memory Usage
-func GetMemoryUsageHandler(w http.ResponseWriter, req *http.Request) {
-
-}
-
-//******************************************************************************
-// Network Usage
-func GetNetworkSpeedHandler(w http.ResponseWriter, req *http.Request) {
-
+	return usageData
 }
 
 func randomInt(min int, max int) int {
@@ -102,10 +123,7 @@ func randomInt(min int, max int) int {
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/usage/cpu", GetCpuUsageHandler).Methods("GET").Queries("duration", "{duration}")
-	router.HandleFunc("/usage/disk", GetDiskUsageHandler).Methods("GET").Queries("duration", "{duration}")
-	router.HandleFunc("/usage/memory", GetMemoryUsageHandler).Methods("GET").Queries("duration", "{duration}")
-	router.HandleFunc("/usage/network", GetNetworkSpeedHandler).Methods("GET").Queries("duration", "{duration}")
+	router.HandleFunc("/usage", GetUsageHandler).Methods("GET").Queries("duration", "{duration}", "device", "{device}")
 	err := http.ListenAndServe(":3000", router)
 	if err != nil {
 		log.Fatal(err)
