@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -124,7 +125,10 @@ func randomInt(min int, max int) int {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/usage", GetUsageHandler).Methods("GET").Queries("duration", "{duration}", "device", "{device}")
-	err := http.ListenAndServe(":3000", router)
+	err := http.ListenAndServe(":3000",
+		handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+			handlers.AllowedMethods([]string{"GET"}),
+			handlers.AllowedOrigins([]string{"*"}))(router))
 	if err != nil {
 		log.Fatal(err)
 	}
