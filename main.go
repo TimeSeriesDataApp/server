@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -61,28 +62,33 @@ func GetUsageHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func randomUsageData(duration string, upward bool) []UsageSlice {
-	max := 30
+	max := 40
 	min := 0
-	var tsecEnd int
-	var tsecInterval int
+	var totalSamples int
+	var sampleInterval int
 	var minStep int
 	var maxStep int
 	var rnum int
 
-	// Configure sample interval and time end
+	// Configure sample interval and totalSamples
 	if duration == "hr" {
-		// number of seconds in an hour
-		tsecEnd = 3600
-		tsecInterval = 5
+		// One sample every 10sec equates to 360 samples in an hour
+		totalSamples = 360
+		sampleInterval = 10
 	} else {
-		// number of seconds in a week
-		tsecEnd = 604800
-		tsecInterval = 240
+		// One sample every 10min equates to 1008 samples in a week
+		totalSamples = 1008
+		sampleInterval = 10
 	}
 
 	if upward {
-		minStep = 8
-		maxStep = 15
+		if duration == "hr" {
+			minStep = 2
+			maxStep = 4
+		} else {
+			minStep = 3
+			maxStep = 5
+		}
 	} else {
 		minStep = 10
 		maxStep = 10
@@ -90,12 +96,11 @@ func randomUsageData(duration string, upward bool) []UsageSlice {
 
 	var usageData []UsageSlice
 
-	// Generate a bunch of random numbers
-	for tsec := 0; tsec < tsecEnd; tsec += tsecInterval {
+	for sampleNum := 0; sampleNum < totalSamples; sampleNum += sampleInterval {
 		// generate random number between max/min
 		rnum = randomInt(min, max)
 
-		usageData = append(usageData, UsageSlice{tsec, rnum})
+		usageData = append(usageData, UsageSlice{sampleNum, rnum})
 
 		// Reassign max
 		if (rnum + maxStep) > 100 {
@@ -124,7 +129,10 @@ func randomInt(min int, max int) int {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/usage", GetUsageHandler).Methods("GET").Queries("duration", "{duration}", "device", "{device}")
-	err := http.ListenAndServe(":3000", router)
+	err := http.ListenAndServe(":3000",
+		handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+			handlers.AllowedMethods([]string{"GET"}),
+			handlers.AllowedOrigins([]string{"*"}))(router))
 	if err != nil {
 		log.Fatal(err)
 	}
