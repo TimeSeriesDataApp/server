@@ -19,12 +19,20 @@ The server supports generating data that spans an hour or a week in increments o
 - Clone the repository to your local directory from [here](https://github.com/TimeSeriesDataApp/server)
 - Move the cloned directory to the Go workspace on the current machine
 	- Many times, this is some form of `$GOPATH/src/github.com/<username-dir>/`
-	- Note, this assumes you have already configured your `$GOPATH` and have access to the `go tool`
+	- Note, this assumes you have already configured your `$GOPATH` and have the `go tool` installed
 - Install the dependencies for this project.
 	- `go get github.com/gorilla/handlers`
 	- `go get github.com/gorilla/mux`
+	- `go get github.com/joho/godotenv`
+- Add a `.env` file with the specified port the server should listen on (see example below)
+	- For this example port 3000 is being used. Replace this with the port number specified in the `.env` file if a different port is used
 - Once finished build the code with `go build` and run the resulting binary file
-- The server should be listening on `http://localhost:3000` for requests
+- The server should be listening on `http://localhost:<port-number-from-env-file>` for requests
+
+`.env`
+```
+PORT=3000
+```
 
 ## Making Requests
 This server supports `GET` requests to the `/usage` endpoint. Information passed to the server is
