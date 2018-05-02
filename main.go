@@ -129,10 +129,12 @@ func randomInt(min int, max int) int {
 }
 
 func main() {
-	// Read environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// Read environment variables if not production
+	if os.Getenv("APP_ENV") != "production" {
+		loadErr := godotenv.Load()
+		if loadErr != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
 
 	PORT := os.Getenv("PORT")
@@ -140,7 +142,7 @@ func main() {
 	router.HandleFunc("/usage", GetUsageHandler).Methods("GET").Queries("duration", "{duration}", "device", "{device}")
 
 	fmt.Printf("Starting server on PORT %s...", PORT)
-	err = http.ListenAndServe(fmt.Sprintf(":%s", PORT),
+	err := http.ListenAndServe(fmt.Sprintf(":%s", PORT),
 		handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
 			handlers.AllowedMethods([]string{"GET"}),
 			handlers.AllowedOrigins([]string{"*"}))(router))
