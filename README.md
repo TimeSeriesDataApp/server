@@ -24,7 +24,7 @@ The server supports generating data that spans an hour or a week in increments o
 	- `go get github.com/gorilla/handlers`
 	- `go get github.com/gorilla/mux`
 	- `go get github.com/joho/godotenv`
-- Add a `.env` file with the specified port the server should listen on (see example below)
+- Add a `.env` file to the root of the project directory with the specified port the server should listen on (see example below)
 	- For this example port 3000 is being used. Replace this with the port number specified in the `.env` file if a different port is used
 - Once finished build the code with `go build` and run the resulting binary file
 - The server should be listening on `http://localhost:<port-number-from-env-file>` for requests
