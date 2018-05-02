@@ -6,11 +6,13 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 // UsageSlice : Time slice struct to hold generated usage data
@@ -127,9 +129,18 @@ func randomInt(min int, max int) int {
 }
 
 func main() {
+	// Read environment variables
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	PORT := os.Getenv("PORT")
 	router := mux.NewRouter()
 	router.HandleFunc("/usage", GetUsageHandler).Methods("GET").Queries("duration", "{duration}", "device", "{device}")
-	err := http.ListenAndServe(":3000",
+
+	fmt.Printf("Starting server on PORT %s...", PORT)
+	err = http.ListenAndServe(fmt.Sprintf(":%s", PORT),
 		handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
 			handlers.AllowedMethods([]string{"GET"}),
 			handlers.AllowedOrigins([]string{"*"}))(router))
